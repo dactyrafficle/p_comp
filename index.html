@@ -82,6 +82,8 @@ html, body {
 
  <p> We'll never get to 0 profit since market price will fall to the lowest possible level without losing money. </p>
  <p> the max revenue we can extract from consumers is n_consumers x \alpha x M , in this case is 1700</p>
+ 
+ <p> show 0-profit price, and correct graph for dimensions </p>
 </div>
 
 <div class='section2' id=''>
@@ -387,26 +389,46 @@ function plotPriceData() {
 
  // EACH TIME, FIND THE MAX PRICE EVER, AND START THERE
 
+ let w = 700;
+ let h = 500;
+
  let c = document.getElementById('mycanvas');
  let ctx = c.getContext('2d');
- c.width = 500; 
- c.height = 500;
+ c.width = w; 
+ c.height = h;
  c.style.border = '1px solid #999';
  
  ctx.fillStyle = '#fc09';
+ 
+ let max_price = 0;
+ // FOR EACH YEAR
+ for (let i = 0; i < data.length; i++) {
+  // FOR EACH MARKET PRICE
+  for (let j = 0; j < data[i].sales_data.length; j++) {
+   let price = data[i].sales_data[j].price;
+   if (price > max_price) {
+    max_price = price;
+   }
+  }
+ }
+ 
+ let dx = (w*0.95) / (data.length);
+ if (dx > 10) {
+  dx = 10;
+ }
+ 
  
  // FOR EACH YEAR
  for (let i = 0; i < data.length; i++) {
   // FOR EACH MARKET PRICE
   for (let j = 0; j < data[i].sales_data.length; j++) {
    ctx.beginPath();
-   let y = 500-data[i].sales_data[j].price*130;
+   let y = h-(data[i].sales_data[j].price/max_price)*h*0.95;
    let r = data[i].sales_data[j].market_share_by_units*6;
-   ctx.arc(5+5*i, y, r, 0, 2*Math.PI);
+   ctx.arc(5+dx*i, y, r, 0, 2*Math.PI);
    ctx.fill();
   }
- 
-  //console.log(data);
+
  }
 
 }
