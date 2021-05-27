@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html>
+
+ <meta charset="utf-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.12.0/dist/katex.min.css" integrity="sha384-AfEj0r4/OFrOo5t7NnNe46zW/tFgW6x/bCJG8FqQCEo3+Aro6EYUG4+cU+KJWu/X" crossorigin="anonymous">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.13.0/dist/katex.min.css" integrity="sha384-t5CR+zwDAROtph0PXGte6ia8heboACF9R5l/DiY+WZ3P2lxNgvJkQk5n7GPvLMYw" crossorigin="anonymous">
+
+<!-- The loading of KaTeX is deferred to speed up page rendering -->
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.13.0/dist/katex.min.js" integrity="sha384-FaFLTlohFghEIZkw6VGwmf9ISTubWAVYW8tG8+w2LAIftJEULZABrF9PPFv+tVkH" crossorigin="anonymous"></script>
+
+<!-- To automatically render math in text elements, include the auto-render extension: -->
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.13.0/dist/contrib/auto-render.min.js" integrity="sha384-bHBqxz8fokvgoJ/sc17HODNxa42TlaEhB+w8ZJXTc2nZf1VgEaFZeZvT4Mznfz0v" crossorigin="anonymous" onload="renderMathInElement(document.body);"></script>
+
+
+<script>
+ window.onload = function() {
+  let math = document.getElementsByClassName('math');
+  for (let i = 0; i < math.length; i++) {
+   katex.render(math[i].textContent, math[i]);
+  }
+ };
+</script>
+
+<style>
+
+html, body {
+ font-family: calibri;
+}
+.section {
+ vertical-align: top;
+ border: 1px solid #999;
+ padding: 1vh;
+ margin: 1vh;
+}
+.section2 {
+ vertical-align: top;
+ border: 1px solid #999;
+ padding: 1vh;
+ margin: 1vh;
+ display: inline-block;
+}
+.mytable {
+ border-collapse: collapse;
+ margin: 0.5vh;
+}
+.mytable td {
+ border: 1px solid #999;
+ padding: 0.5vh;
+}
+.sold {
+ background-color: #fc09;
+}
+.inactive_firm {
+ background-color: #ddd;
+}
+.dead_firm {
+ display: none;
+}
+
+</style>
+
+<body>
+
+<div class='section'>
+ <h4> mechanism </h4>
+ <ul>
+  <li> Each firm sets a price
+  <li> Each firm determines the level of output to produce
+  <li> it produces output, incurring production costs
+  <li> each firm supplies the market </li>
+  <li> consumers consult the market, and buy as much as they need, given their budget, and always sorting to start from the lowest prices available
+ </ul>
+ 
+ <ul>
+  <li> Each frame, all firms recalculate their price
+  <li> A new firm enters
+  <li> If a firm has accumulated loss, it exits the market
+ </ul>
+
+ <p> We'll never get to 0 profit since market price will fall to the lowest possible level without losing money. </p>
+ <p> the max revenue we can extract from consumers is n_consumers x \alpha x M , in this case is 1700</p>
+</div>
+
+<div class='section2' id=''>
+<h4> firm profit </h4>
+<table class='mytable'>
+ <tr>
+  <td> cost </td><td><span class='math'>c(x) = c_f + c_v x </span></td>
+ </tr>
+ <tr>
+  <td> production </td><td><span class='math'>f(x) = a \ln x </span></td>
+ </tr>
+ <tr>
+  <td> profit </td>
+  <td>
+   <p><span class='math'>\pi = p \cdot f(x) - c(x) </span></p>
+   <p><span class='math'>\pi = p \cdot a \ln x - c_v x - c_f </span></p>
+  </td>
+ </tr>
+ <tr>
+  <td> production </td>
+  <td>
+   <p><span class='math'> \pi' = \frac{pa}{x} - c_v = 0 </span></p>
+   <p><span class='math'> x^* = \frac{pa}{c_v}</span></p>
+   <p><span class='math'>y^* = f(\frac{pa}{c_v}) </span></p>
+   <p> But in this case the firms have to produce an integer value of output. </p>
+   <p><span class='math'> y_{corrected}^* =  y^* - (y^* \mod 1) </span></p>
+   <p> But assume they can buy whatever level of <span class='math'>x</span> they need. </p>
+   <p><span class='math'> x_{corrected}^* = f^{-1}(y_{corrected}^*) =  e^{\frac{y_{corrected}^*}{a}} </span></p>
+  </td>
+ </tr>
+</table>
+</div>
+
+<div class='section2' id='canvas-container'>
+ <canvas id='mycanvas'></canvas>
+</div>
+
+<table class='mytable'>
+ <tr><td>x</td><td><button id='full_collision'>one full cycle</button></td><td>the whole thing</td></tr>
+</table>
+
+
+
+<div>
+ <div class='section' id='firms'></div>
+ <div class='section' id='apples'></div>
+ <div class='section' id='consumers'></div>
+</div>
+
+</body>
+
+<script src='Firm.js'></script>
+<script src='Consumer.js'></script>
+<script src='Apple.js'></script>
+<script src='setup.js'></script>
+
+<script>
+
+
+let n_firms = 3;
+let n_consumers = 34;
+
+let year = 0;
+let market_price = null;
+
+let firms = [];
+let consumers = [];
+let apples = [];
+
+let data = [];
+
+
+
+// FULL COLLISION
+document.getElementById('full_collision').addEventListener('click', function() {
+ collide();
+ plotPriceData();
+});
+
+
+
+
+function update_and_display_firm_info(firms) {
+ let el = document.getElementById('firms');
+ el.innerHTML = '';
+ el.style.display = 'inline-block';
+ el.style.margin = '1vh';
+ //el.style.width = '30vw';
+ el.style.border = '1px solid #999';
+
+ let market_supply = 0;
+ let market_demand = 0;
+ let market_revenue = 0;
+ 
+ firms.sort(function(a,b) {
+  return  a.price - b.price;
+ });
+ 
+ let table = document.createElement('table');
+ table.classList.add('mytable');
+ el.appendChild(table);
+ 
+ let th = document.createElement('tr');
+ table.appendChild(th);
+ th.innerHTML = '<td>firm_id</td><td>active</td><td>age</td><td>price</td><td>produced</td><td>sold</td><td>sold / <br> produced</td><td>sold%</td><td>revenue</td><td>profit</td><td>acc profit</td>';
+ 
+ for (let i = 0; i < firms.length; i++) {
+   
+   
+   let tr = document.createElement('tr');
+   table.appendChild(tr);
+   
+   if (!firms[i].active) {
+    tr.classList.add('inactive_firm');
+   }
+   if (firms[i].dead) {
+    tr.classList.add('dead_firm');
+   }
+   
+   //if (firms[i].active) {
+   
+    let td1 = document.createElement('td');
+    td1.innerHTML = firms[i].firm_id;
+    tr.appendChild(td1);
+    
+    let td1b = document.createElement('td');
+    td1b.innerHTML = firms[i].active;
+    tr.appendChild(td1b);
+    
+    let td2 = document.createElement('td');
+    td2.innerHTML = firms[i].age;
+    tr.appendChild(td2);
+    
+    let td3 = document.createElement('td');
+    td3.innerHTML = firms[i].price;
+    tr.appendChild(td3);
+    
+
+    
+    let td4 = document.createElement('td');
+    td4.innerHTML = firms[i].q_produced;
+    tr.appendChild(td4);
+    market_supply += firms[i].q_produced
+    
+    let td5 = document.createElement('td');
+    td5.innerHTML = firms[i].q_sold;
+    tr.appendChild(td5);
+    market_demand += firms[i].q_sold
+    
+    
+    let td3b = document.createElement('td');
+    td3b.innerHTML = firms[i].q_sold + '/' + firms[i].q_produced;
+    tr.appendChild(td3b);
+    
+    let td3c = document.createElement('td');
+    if (firms[i].q_produced === 0) {
+      td3c.innerHTML = 0;
+    } else {
+      td3c.innerHTML = Math.floor((firms[i].q_sold / firms[i].q_produced)*100) + '%';
+    }
+    tr.appendChild(td3c); 
+    
+    // REVENUE
+    let td5b = document.createElement('td');
+    td5b.innerHTML = Math.floor(firms[i].revenue);
+    tr.appendChild(td5b);
+    market_revenue += Math.floor(firms[i].revenue);
+    
+    let td6 = document.createElement('td');
+    td6.innerHTML = Math.floor(firms[i].profit);
+    tr.appendChild(td6);
+    
+    let td7 = document.createElement('td');
+    td7.innerHTML = Math.floor(firms[i].accumulated_profit);
+    tr.appendChild(td7);
+
+    let str = '<p>';
+    for (let j = 0; j < firms[i].profits.length; j++) {
+     //str += ' ' + Math.floor(firms[i].profits[j]) + ' ';
+    }
+    //str += '</p>';
+
+ }
+ 
+ let ts = document.createElement('tr');
+ table.appendChild(ts);
+ 
+ if (market_supply === 0) {
+  ts.innerHTML = '<td></td><td></td><td></td><td></td><td>'+ market_supply + '</td><td>' + market_demand + '</td><td>'+ market_demand + '/' + market_supply +'</td><td>' + 0 + '%</td><td>' + market_revenue + '</td>';
+ } else {
+  ts.innerHTML = '<td></td><td></td><td></td><td></td><td>'+ market_supply + '</td><td>' + market_demand + '</td><td>'+ market_demand + '/' + market_supply +'</td><td>' + Math.floor((market_demand/market_supply)*100) + '%</td><td>' + market_revenue + '</td>';
+ }
+ 
+}
+
+function update_and_display_market_supply(apples) {
+ let el = document.getElementById('apples');
+ el.innerHTML = '';
+ el.style.display = 'inline-block';
+ el.style.margin = '1vh';
+ el.style.width = '51vw';
+ el.style.border = '1px solid #999';
+ 
+ let table = document.createElement('table');
+ table.classList.add('mytable');
+ el.appendChild(table);
+ 
+ let th = document.createElement('tr');
+ table.appendChild(th);
+ th.innerHTML = '<td>market_supply_id</td><td>firm_id <br> (produced by)</td><td>firm_production_id</td><td>price</td><td>sold</td><td>consumer_id <br> (sold to)</td>';
+ 
+ for (let i = 0; i < apples.length; i++) {
+  let tr = document.createElement('tr');
+  table.appendChild(tr);
+  
+  let td1 = document.createElement('td');
+  td1.innerHTML = apples[i].market_supply_id;
+  tr.classList.add('apple-' + apples[i].market_supply_id);
+  tr.appendChild(td1);
+  
+  let td2 = document.createElement('td');
+  td2.innerHTML = apples[i].firm_id;
+  tr.appendChild(td2);
+  
+  let td3 = document.createElement('td');
+  td3.innerHTML = apples[i].firm_production_id;
+  tr.appendChild(td3);
+  
+  let td4 = document.createElement('td');
+  td4.innerHTML = apples[i].price;
+  tr.appendChild(td4);
+
+  let td5 = document.createElement('td');
+  td5.innerHTML = apples[i].sold;
+  tr.appendChild(td5);
+  
+  let td6 = document.createElement('td');
+  td6.innerHTML = apples[i].consumer_id;
+  tr.appendChild(td6);
+ 
+ }
+ 
+}
+
+function displayApples2() {
+ let el = document.getElementById('apples');
+ el.innerHTML = '';
+ el.style.display = 'inline-block';
+ el.style.margin = '1vh';
+ el.style.width = '29vw';
+ el.style.border = '1px solid #999';
+ //let arr = apples.concat(applesSold);
+ let arr = apples;
+ arr.sort(function(a,b) {
+  return  a.price - b.price;
+ });
+ 
+ arr.sort(function(a,b) {
+  let x = 0;
+  let y = 0;
+  if (a.sold) {
+   x = 1;
+  } else {
+   x = 0;
+  }
+  if (b.sold) {
+   y = 1;
+  } else {
+   y = 0;
+  }
+  return  y - x;
+ });
+
+
+ 
+ for (let i = 0; i < arr.length; i++) {
+   
+   let a = document.createElement('div');
+   a.style.border = '1px solid #999';
+   a.style.borderRadius = '50%';
+   a.style.margin = '5px';
+   a.style.display = 'inline-block';
+   a.style.width = '7px';
+   a.style.height = '7px';
+   
+   if (arr[i].sold) {
+    a.style.backgroundColor = '#ffdd99'; // if sold
+   } else {
+    a.style.backgroundColor = 'd1d1e0'; //'#d98c8c'; // unsold
+   }
+   
+   a.addEventListener('click', function() {
+    console.log(arr[i]);
+   });
+   
+   el.appendChild(a);
+   
+ }
+}
+
+
+function plotPriceData() {
+
+ // EACH TIME, FIND THE MAX PRICE EVER, AND START THERE
+
+ let c = document.getElementById('mycanvas');
+ let ctx = c.getContext('2d');
+ c.width = 500; 
+ c.height = 500;
+ c.style.border = '1px solid #999';
+ 
+ ctx.fillStyle = '#fc09';
+ 
+ // FOR EACH YEAR
+ for (let i = 0; i < data.length; i++) {
+  // FOR EACH MARKET PRICE
+  for (let j = 0; j < data[i].sales_data.length; j++) {
+   ctx.beginPath();
+   let y = 500-data[i].sales_data[j].price*130;
+   let r = data[i].sales_data[j].market_share_by_units*6;
+   ctx.arc(5+5*i, y, r, 0, 2*Math.PI);
+   ctx.fill();
+  }
+ 
+  //console.log(data);
+ }
+
+}
+
+
+
+
+</script>
+</html>
